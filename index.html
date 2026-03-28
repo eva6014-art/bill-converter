@@ -101,7 +101,7 @@
     </table>
     
     <br>
-    <button id="copyBtn" style="display: none;" onclick="copyTable()">複製表格</button>
+    <button id="copyBtn" style="display: none;" onclick="copyTable()">複製表格 (純文字防當機版)</button>
 </div>
 
 <script>
@@ -135,7 +135,6 @@
             table.style.display = "none";
             copyBtn.style.display = "none";
 
-            // 這裡就是控制 AI 邏輯的地方，我加了 totalAmount 的規則
             const promptText = `你是一個專業的信用卡帳單解析助理。
 請讀取這份 PDF 中的「所有消費明細」以及「本期應繳總額」等資訊，並將資料轉換成純 JSON Array 格式。
 每個物件必須包含以下 key：
@@ -172,7 +171,6 @@
                 const dataArray = JSON.parse(aiText);
                 
                 tbody.innerHTML = ""; 
-                // 這裡把 AI 抓到的 totalAmount 放進新欄位
                 dataArray.forEach(item => {
                     const row = `<tr>
                         <td>${item.date || ''}</td>
@@ -200,19 +198,29 @@
         };
     }
 
+    // 重新改寫的複製功能：只提取純文字，以 Tab 鍵分隔，完美對應 Excel 儲存格
     function copyTable() {
         const table = document.getElementById('resultTable');
-        const range = document.createRange();
-        range.selectNode(table);
-        window.getSelection().removeAllRanges();
-        window.getSelection().addRange(range);
-        try {
-            document.execCommand('copy');
-            alert('✅ 表格已複製！你可以直接貼到 Excel 了。');
-        } catch (err) {
-            alert('複製失敗，請手動反白複製。');
+        let textToCopy = "";
+        
+        // 逐行讀取表格資料
+        for (let i = 0; i < table.rows.length; i++) {
+            let rowData = [];
+            for (let j = 0; j < table.rows[i].cells.length; j++) {
+                // 取得格子內的純文字，並清除多餘的空白
+                let cellText = table.rows[i].cells[j].innerText.trim();
+                rowData.push(cellText);
+            }
+            // 用 Tab 鍵將同一列的資料隔開，再換行
+            textToCopy += rowData.join("\t") + "\n";
         }
-        window.getSelection().removeAllRanges();
+        
+        // 使用現代剪貼簿 API 將純文字寫入
+        navigator.clipboard.writeText(textToCopy).then(() => {
+            alert('✅ 表格已複製（純文字無格式）！請直接在 Excel 中按 Ctrl+V 貼上，保證不當機。');
+        }).catch(err => {
+            alert('複製失敗，請確認瀏覽器權限。');
+        });
     }
 </script>
 
